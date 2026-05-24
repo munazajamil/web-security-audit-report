@@ -1,302 +1,223 @@
-# 🛡️ SIEM Log Monitoring & Threat Detection using Splunk
+# 🛡️ Web Application Security Assessment Report
 
-
----
-
-## 📌 Project Overview
-
-This project simulates a **real-world SOC (Security Operations Center)** environment built entirely on a home lab. Using **Splunk Enterprise** as the SIEM, **Sysmon** for deep Windows telemetry, and **Kali Linux** as the attacker machine, I simulated three real attack scenarios, built custom detection rules in SPL, and mapped all findings to the **MITRE ATT&CK framework**.
-
-This project replicates **Tier 1–2 SOC analyst workflows** including alert triage, log analysis, and detection engineering.
+> **Portfolio Sample** — Target URL and identifying details have been redacted. This report demonstrates real methodology applied during a surface-level black-box audit conducted with written client authorization.
 
 ---
 
-## 🧱 Lab Architecture
+## 📋 Report Overview
 
-```
-┌─────────────────────────────┐         ┌──────────────────────┐
-│     Windows 11 (Victim)     │◄────────│   Kali Linux VM      │
-│                             │  Attack │   IP: 192.168.56.102 │
-│  IP: 192.168.56.1           │         │   Tool: Hydra        │
-│  Splunk Enterprise          │         └──────────────────────┘
-│  Sysmon v15.15              │
-│  Windows Security Logs      │
-└─────────────────────────────┘
-         │
-         ▼
-┌─────────────────────────────┐
-│     Splunk SIEM             │
-│  - 19,000+ Security Events  │
-│  - 3,151+ Sysmon Events     │
-│  - Custom Detection Rules   │
-│  - SOC Dashboard            │
-└─────────────────────────────┘
-```
+| Field | Details |
+|-------|---------|
+| **Report Type** | Surface-Level Web Security Audit |
+| **Target** | Confidential `.com` domain *(not disclosed publicly)* |
+| **Tester** | Munnaza Jamil |
+| **Date** | May 2026 |
+| **Classification** | Confidential — Portfolio Document |
+| **Authorization** | Written permission obtained from target owner |
 
 ---
 
-## 🛠️ Tools & Technologies
+## 🔍 Executive Summary
+
+A **passive and active, non-intrusive** security assessment was conducted against the target web application. The engagement included:
+
+- 🔎 DNS & WHOIS reconnaissance
+- 🌐 Port and service enumeration
+- 🖥️ Web server fingerprinting
+- 🔧 Automated vulnerability scanning
+
+**3 findings** were identified across the assessment, ranging from **Informational** to **Medium** severity. No critical vulnerabilities were discovered. One positive security control (WAF) was confirmed active.
+
+---
+
+## 🧪 Scope & Methodology
+
+### Assessment Parameters
+
+| Parameter | Detail |
+|-----------|--------|
+| **Assessment Type** | Black-box, non-intrusive |
+| **Tools Used** | `Nmap` `WPScan` `WHOIS` `Nikto` |
+| **Framework** | OWASP Testing Guide (OTG) |
+| **Authorization** | ✅ Written permission obtained |
+| **Scan Depth** | Surface-level — no exploitation attempted |
+
+### Tools Used
 
 | Tool | Purpose |
 |------|---------|
-| **Splunk Enterprise** | SIEM — log ingestion, search, alerting |
-| **Sysmon v15.15** | Deep Windows process/network monitoring |
-| **Kali Linux** | Attacker machine for attack simulation |
-| **Hydra** | Brute force attack tool |
-| **Windows 11** | Victim/target machine |
-| **SwiftOnSecurity Sysmon Config** | Optimized Sysmon detection ruleset |
+| `Nmap -sV` | Port scanning & service version detection |
+| `WPScan` | WordPress vulnerability & plugin enumeration |
+| `Nikto` | Web server misconfiguration scanning |
+| `WHOIS` | Domain registration & ownership lookup |
 
 ---
 
-## ⚔️ Attacks Simulated
+## 📊 Findings Summary
 
-### Attack 1 — SMB Brute Force (T1110)
-### Attack 2 — PowerShell Execution (T1059.001)
-### Attack 3 — Reconnaissance & Discovery (T1087, T1049)
-
----
-
-## 📋 Attack 1: SMB Brute Force
-
-### What Happened
-The attacker machine (Kali Linux) used **Hydra** to perform an SMB brute force attack against a test user account on the Windows victim machine.
-
-### Attack Command (Kali Linux)
-```bash
-hydra -l testuser -P /usr/share/wordlists/rockyou.txt 192.168.56.1 smb -t 4 -V
-```
-
-### What Was Generated
-- **19,059 failed login events** (EventCode 4625)
-- Source IP: `192.168.56.102` (Kali Linux)
-- Target user: `testuser`
-- Authentication method: NTLM
-
-### Detection Query (SPL)
-```spl
-index=main source="WinEventLog:Security" EventCode=4625
-| stats count by Account_Name, Source_Network_Address
-| where count > 10
-| eval Threat="Brute Force Detected!"
-| eval MITRE="T1110 - Brute Force"
-| table Account_Name, Source_Network_Address, count, Threat, MITRE
-```
-
-### MITRE ATT&CK Mapping
-| Technique | ID | Tactic |
-|-----------|-----|--------|
-| Brute Force | T1110 | Credential Access |
-
-### Key Findings
-- 19,059 failed logon attempts detected in Splunk
-- Attacker IP `192.168.56.102` identified as source
-- Account `testuser` targeted with rockyou.txt wordlist
-- Failure reason: "Unknown user name or bad password"
+| # | Finding | Severity | Status |
+|---|---------|----------|--------|
+| 1 | NFS Service Exposed on Public Internet | 🟡 **Medium** | 🔴 Open |
+| 2 | WAF (Web Application Firewall) Detected | ℹ️ **Informational** | ✅ Noted |
+| 3 | Web Server Version Fingerprinting Possible | 🔵 **Low** | 🟠 Open |
 
 ---
 
-## 📋 Attack 2: Suspicious PowerShell Execution
-
-### What Happened
-After gaining initial access, the attacker executed suspicious PowerShell commands using bypass flags commonly used by malware and threat actors.
-
-### Attack Commands (Windows — Simulating Post-Exploitation)
-```powershell
-powershell -nop -exec bypass -c "Write-Host 'Simulated Attack'"
-powershell -nop -exec bypass -w hidden -c "IEX 'Write-Host Malware Simulation'"
-```
-
-### Suspicious Flags Used
-| Flag | Meaning | Why Malicious |
-|------|---------|--------------|
-| `-nop` | No Profile | Bypasses profile restrictions |
-| `-exec bypass` | Bypass Execution Policy | Runs unsigned scripts |
-| `-w hidden` | Hidden Window | Hides from user |
-| `IEX` | Invoke Expression | Downloads & runs remote code |
-
-### Detection Query (SPL)
-```spl
-index=main sourcetype="XmlWinEventLog:Microsoft-Windows-Sysmon/Operational" "powershell"
-| eval Threat="Suspicious PowerShell Detected!"
-| eval MITRE="T1059.001 - PowerShell"
-| table _time, host, Threat, MITRE
-```
-
-### MITRE ATT&CK Mapping
-| Technique | ID | Tactic |
-|-----------|-----|--------|
-| PowerShell | T1059.001 | Execution |
-
-### Key Findings
-- PowerShell execution captured in Sysmon logs
-- `powershell.exe` path: `C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe`
-- Bypass flags detected in event data
-- EventID 5 (Process Terminated) confirmed execution
+## 🔎 Detailed Findings
 
 ---
 
-## 📋 Attack 3: Reconnaissance & Discovery
+### Finding 1 — NFS Service Exposed on Public Internet
 
-### What Happened
-After gaining access, the attacker ran system discovery commands to enumerate users, groups, network connections — standard post-exploitation recon behavior.
+| Field | Detail |
+|-------|--------|
+| **Severity** | 🟡 Medium |
+| **Port** | 2049/tcp |
+| **Status** | Open |
+| **CVSS Category** | Network Misconfiguration |
 
-### Attack Commands (Simulating Attacker Recon)
-```powershell
-net user                        # List all user accounts
-net localgroup administrators   # List admin group members
-whoami /all                     # Current user privileges
-netstat -ano                    # Active network connections
+#### Description
+
+Network File System (NFS) service was found **running and accessible on port 2049/tcp from the public internet**. NFS is a file-sharing protocol designed strictly for internal/private network use. Its exposure on a public-facing server is a significant misconfiguration.
+
+#### Evidence
+
+```
+PORT      STATE   SERVICE   VERSION
+2049/tcp  open    nfs       3-4 (RPC #100003)
 ```
 
-### What Was Generated
-- **26 process creation events** (EventCode 4688)
-- Multiple suspicious processes logged
-- User enumeration activity recorded
+#### Risk
 
-### Detection Query (SPL)
-```spl
-index=main source="WinEventLog:Security" EventCode=4688
-| eval Threat="Suspicious Reconnaissance!"
-| eval MITRE="T1087 - Account Discovery"
-| table _time, User, New_Process_Name, Threat, MITRE
-| head 10
-```
+> If NFS exports are misconfigured, an **unauthenticated remote attacker** could potentially:
+> - Read sensitive files from server exports
+> - Write or modify files on mounted shares
+> - Leverage access for further lateral movement
 
-### MITRE ATT&CK Mapping
-| Technique | ID | Tactic |
-|-----------|-----|--------|
-| Account Discovery | T1087 | Discovery |
-| System Network Connections Discovery | T1049 | Discovery |
+This finding also unnecessarily increases the server's **external attack surface**.
+
+#### Recommendations
+
+- [ ] Block port `2049` at the firewall for **all external/inbound traffic**
+- [ ] Restrict NFS access to **trusted internal IPs only** via `/etc/exports`
+- [ ] If NFS is not actively required, **disable the service entirely**
+- [ ] Audit current NFS exports using `showmount -e <host>` from an internal network
 
 ---
 
-## 🔍 MITRE ATT&CK Summary
+### Finding 2 — WAF (Web Application Firewall) Detected
+
+| Field | Detail |
+|-------|--------|
+| **Severity** | ℹ️ Informational |
+| **Status** | Noted — Positive Control |
+
+#### Description
+
+A **Web Application Firewall (WAF)** was detected during scanning. The target returned **HTTP 403 Forbidden** responses to automated scanner traffic, indicating active WAF filtering. This is a **positive security control**.
+
+#### Evidence
 
 ```
-Initial Access → Credential Access → Execution → Discovery
-                        │                │            │
-                   T1110 Brute      T1059.001     T1087 Account
-                   Force            PowerShell    Discovery
-                                                      │
-                                                  T1049 Network
-                                                  Discovery
+WPScan Output:
+"Scan Aborted: The target is responding with a 403,
+this might be due to a WAF."
 ```
 
----
+#### Recommendations
 
-## 📊 Detection Rules Summary
-
-| Rule Name | EventCode | Logic | MITRE |
-|-----------|-----------|-------|-------|
-| Brute Force Detection | 4625 | Failed logins > 10 from same IP | T1110 |
-| PowerShell Execution | Sysmon | powershell.exe with bypass flags | T1059.001 |
-| Recon Detection | 4688 | net.exe, whoami.exe, netstat.exe | T1087, T1049 |
+- [ ] Ensure WAF rulesets are **regularly updated**
+- [ ] Tune rules to defend against **WAF bypass techniques** (encoding, header manipulation)
+- [ ] Periodically test WAF effectiveness using controlled assessments
 
 ---
 
-## 📈 Key Statistics
+### Finding 3 — Web Server Version Fingerprinting Possible
 
-| Metric | Value |
-|--------|-------|
-| Total Security Events Ingested | 48,377+ |
-| Total Sysmon Events Ingested | 3,151+ |
-| Brute Force Attempts Detected | 19,059 |
-| Process Creation Events | 26 |
-| Detection Rules Created | 3 |
-| MITRE Techniques Covered | 4 |
+| Field | Detail |
+|-------|--------|
+| **Severity** | 🔵 Low |
+| **Port** | 80/tcp, 443/tcp |
+| **Status** | Open |
 
----
+#### Description
 
-## 🧠 SOC Analyst Skills Demonstrated
+The web server **identified itself as OpenResty** through service banner responses during port scanning. Exposing server technology and version information allows attackers to **research known CVEs** specific to that version and craft targeted attacks.
 
-- ✅ SIEM deployment and configuration (Splunk)
-- ✅ Log ingestion from multiple Windows sources
-- ✅ SPL (Search Processing Language) query writing
-- ✅ Custom detection rule creation
-- ✅ Alert configuration and tuning
-- ✅ Attack simulation and investigation
-- ✅ MITRE ATT&CK framework mapping
-- ✅ Incident triage and documentation
-- ✅ Sysmon deployment and configuration
-
----
-
-## 📁 Project Structure
+#### Evidence
 
 ```
-SOC-Splunk-SIEM-ThreatDetection/
-│
-├── README.md                          # This file
-│
+PORT    STATE  SERVICE   VERSION
+80/tcp  open   http      OpenResty web app server
+443/tcp open   ssl/http  OpenResty web app server
+```
+
+#### Recommendations
+
+- [ ] Suppress server version banners in HTTP response headers
+- [ ] Add the following to OpenResty/Nginx configuration:
+  ```nginx
+  server_tokens off;
+  ```
+- [ ] Remove or customize the `Server:` HTTP response header
+- [ ] Consider using a reverse proxy to further mask backend technology
+
+---
+
+## ✅ Positive Security Observations
+
+The following security controls were **confirmed active** during assessment:
+
+| Control | Status |
+|---------|--------|
+| 🔒 HTTPS (Port 443) active — encrypted traffic in use | ✅ Present |
+| 🛡️ Web Application Firewall (WAF) deployed | ✅ Present |
+| 🚫 No critical ports exposed beyond expected web services | ✅ Confirmed |
+
+---
+
+## 📸 Evidence Screenshots
+
+> *Screenshots of scan outputs are included below. All identifying information (URLs, IPs) has been blurred for client confidentiality.*
+
+| Screenshot | Description |
+|------------|-------------|
+| `nmap_scan.png` | Nmap service version scan output |
+| `whois_lookup.png` | WHOIS domain reconnaissance result |
+
+---
+
+## 📁 Repository Structure
+
+```
+web-security-audit-sample/
+├── README.md               ← This report
 ├── screenshots/
-│   ├── attack1-bruteforce/            # Brute force attack evidence
-│   ├── attack2-powershell/            # PowerShell attack evidence
-│   └── attack3-recon/                 # Reconnaissance evidence
-│
-├── detection-rules/
-│   ├── bruteforce_detection.spl       # SPL query for brute force
-│   ├── powershell_detection.spl       # SPL query for PowerShell
-│   └── recon_detection.spl            # SPL query for recon
-│
-└── docs/
-    └── lab-setup.md                   # Lab setup documentation
+│   ├── nmap_scan.png       ← Blurred Nmap output
+│   └── whois_lookup.png    ← Blurred WHOIS output
 ```
 
 ---
 
-## 🚀 How to Reproduce
+## ⚠️ Disclaimer
 
-### Prerequisites
-- Windows 10/11 machine
-- VirtualBox with Kali Linux VM
-- Splunk Enterprise (Free — 500MB/day)
-- Sysmon + SwiftOnSecurity config
-
-### Step 1: Install Sysmon
-```powershell
-# Download SwiftOnSecurity config
-Invoke-WebRequest -Uri "https://raw.githubusercontent.com/SwiftOnSecurity/sysmon-config/master/sysmonconfig-export.xml" -OutFile "sysmonconfig-export.xml"
-
-# Install Sysmon with config
-Sysmon64.exe -accepteula -i sysmonconfig-export.xml
-```
-
-### Step 2: Configure Splunk inputs.conf
-```ini
-[WinEventLog://Microsoft-Windows-Sysmon/Operational]
-index = main
-disabled = false
-renderXml = false
-
-[WinEventLog://Security]
-index = main
-disabled = false
-```
-
-### Step 3: Run Attacks
-```bash
-# From Kali Linux
-hydra -l testuser -P /usr/share/wordlists/rockyou.txt 192.168.56.1 smb -t 4 -V
-```
+> This assessment was conducted with **explicit written authorization** from the target owner.
+> Findings reflect a **point-in-time assessment** and may not represent all vulnerabilities present.
+> This report is published for **portfolio and educational purposes only**, with all identifying information redacted.
+> Unauthorized scanning or testing of systems without permission is **illegal** and unethical.
 
 ---
 
-## 📚 References
+## 👩‍💻 About the Tester
 
-- [Splunk Documentation](https://docs.splunk.com)
-- [MITRE ATT&CK Framework](https://attack.mitre.org)
-- [SwiftOnSecurity Sysmon Config](https://github.com/SwiftOnSecurity/sysmon-config)
-- [Sysinternals Sysmon](https://learn.microsoft.com/en-us/sysinternals/downloads/sysmon)
+**Munnaza Jamil** — SOC Analyst & Cybersecurity Researcher
 
----
-
-## 👩‍💻 Author
-
-**Munnaza Jameel**
-SOC Analyst (Home Lab)
-📍 Rawalpindi, Pakistan
-🔗 [GitHub](https://github.com/munazajamil)
+- 🔗 [GitHub](https://github.com/munazajamil)
+- 🔗 [LinkedIn](https://linkedin.com/in/munazajamil/)
+- 🌐 [Blog](https://munazajameel.site/blog)
+- 🎓 Cybersecurity Diploma — PNY Rawalpindi
+- 🧪 TryHackMe | Wazuh SIEM | MITRE ATT&CK | OSINT
 
 ---
 
-> ⚠️ **Disclaimer:** All attacks were performed in an isolated home lab environment for educational purposes only. Never perform these activities on systems you do not own or have explicit permission to test.
+*Report generated using OWASP OTG methodology | May 2026*
