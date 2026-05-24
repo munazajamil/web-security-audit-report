@@ -210,7 +210,7 @@ web-security-audit-sample/
 
 ## 👩‍💻 About the Tester
 
-**Munnaza Jamil** — SOC Analyst & Cybersecurity Researcher
+**Munnaza Jamil** — 
 
 - 🔗 [GitHub](https://github.com/munazajamil)
 - 🔗 [LinkedIn](https://linkedin.com/in/munazajamil/)
